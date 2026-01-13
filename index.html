@@ -1,0 +1,2348 @@
+<!doctype html>
+<html lang="en" class="h-full">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Analyzer Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/_sdk/element_sdk.js"></script>
+    <script src="/_sdk/data_sdk.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+    <style>
+        body {
+            box-sizing: border-box;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        
+        .liquid-glass {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0.1) 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+        }
+        
+        .liquid-glass-dark {
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.2) 50%, rgba(0, 0, 0, 0.4) 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        
+        .glow-green {
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.4), 0 0 40px rgba(34, 197, 94, 0.2);
+        }
+        
+        .glow-red {
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.4), 0 0 40px rgba(239, 68, 68, 0.2);
+        }
+        
+        .glow-yellow {
+            box-shadow: 0 0 20px rgba(234, 179, 8, 0.4), 0 0 40px rgba(234, 179, 8, 0.2);
+        }
+        
+        .animated-gradient {
+            background: linear-gradient(-45deg, #0f0f23, #1a1a3e, #0d1b2a, #1b263b);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+        
+        @keyframes gradientShift {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+        
+        @keyframes pulse-glow {
+            0%,
+            100% {
+                opacity: 0.6;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+        
+        .pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+        
+        .float {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .chart-bar {
+            transition: height 0.5s ease-out;
+        }
+        
+        .stock-card {
+            transition: all 0.3s ease;
+        }
+        
+        .stock-card:hover {
+            transform: translateY(-4px);
+        }
+        
+        input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5);
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+        /* Custom Cursor */
+        
+        * {
+            cursor: none !important;
+        }
+        
+        #custom-cursor {
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(99, 102, 241, 0.8);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10000;
+            transition: transform 0.15s ease, border-color 0.2s ease;
+            mix-blend-mode: difference;
+        }
+        
+        #cursor-trail {
+            position: fixed;
+            width: 8px;
+            height: 8px;
+            background: rgba(168, 85, 247, 0.6);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            transition: transform 0.3s ease;
+        }
+        
+        .cursor-hover #custom-cursor {
+            transform: scale(1.8);
+            border-color: rgba(168, 85, 247, 1);
+        }
+    </style>
+    <style>
+        @view-transition {
+            navigation: auto;
+        }
+    </style>
+</head>
+
+<body class="h-full w-full m-0 p-0 animated-gradient text-white overflow-hidden">
+    <!-- Custom Cursor -->
+    <div id="custom-cursor"></div>
+    <div id="cursor-trail"></div>
+    <div id="app" class="h-full w-full flex flex-col overflow-auto scrollbar-thin">
+        <!-- Floating Orbs Background -->
+        <div class="fixed inset-0 pointer-events-none overflow-hidden">
+            <div class="absolute top-20 left-10 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl float"></div>
+            <div class="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl float" style="animation-delay: -2s;"></div>
+            <div class="absolute top-1/2 left-1/2 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl float" style="animation-delay: -4s;"></div>
+        </div>
+        <!-- Login Screen -->
+        <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black">
+            <div class="liquid-glass rounded-3xl p-8 max-w-md w-full transform scale-100 transition-all duration-500">
+                <div class="text-center mb-8">
+                    <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mx-auto mb-4 shadow-2xl">
+                        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+       </svg>
+                    </div>
+                    <h1 class="text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent mb-2">TradePro</h1>
+                    <p class="text-gray-400">Sign in to access your trading dashboard</p>
+                </div>
+                <form id="login-form" class="space-y-4">
+                    <div><label for="login-username" class="block text-sm font-medium text-gray-300 mb-2">Username</label> <input type="text" id="login-username" required placeholder="Enter your username" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 transition-all focus:border-indigo-500">
+                    </div>
+                    <div><label for="login-password" class="block text-sm font-medium text-gray-300 mb-2">Password</label> <input type="password" id="login-password" required placeholder="Enter your password" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 transition-all focus:border-indigo-500">
+                    </div>
+                    <div class="flex items-center justify-between text-sm"><label class="flex items-center gap-2 cursor-pointer"> <input type="checkbox" id="remember-me" class="w-4 h-4 rounded border-white/10 bg-white/5"> <span class="text-gray-400">Remember me</span> </label> <a href="#" class="text-indigo-400 hover:text-indigo-300 transition-colors">Forgot password?</a>
+                    </div><button type="submit" id="login-btn" class="w-full py-3 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg">
+       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+       </svg> Sign In </button>
+                </form>
+                <div class="mt-6 text-center">
+                    <p class="text-gray-400 text-sm">Don't have an account? <a href="#" class="text-indigo-400 hover:text-indigo-300 transition-colors font-medium">Sign up</a></p>
+                </div>
+                <div class="mt-8 pt-6 border-t border-white/10">
+                    <p class="text-center text-gray-500 text-xs mb-4">Or continue with</p>
+                    <div class="grid grid-cols-3 gap-3"><button class="py-2 bg-white/5 hover:bg-white/10 rounded-lg transition-all flex items-center justify-center">
+        <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" /> <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" /> <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" /> <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+        </svg></button> <button class="py-2 bg-white/5 hover:bg-white/10 rounded-lg transition-all flex items-center justify-center">
+        <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="#1877F2" />
+        </svg></button> <button class="py-2 bg-white/5 hover:bg-white/10 rounded-lg transition-all flex items-center justify-center">
+        <svg class="w-5 h-5" fill="currentColor" viewbox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z" />
+        </svg></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Header -->
+        <header class="relative z-10 p-6">
+            <div class="liquid-glass rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+       </svg>
+                    </div>
+                    <div>
+                        <h1 id="app-title" class="text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">Stock Analyzer Pro</h1>
+                        <p id="welcome-text" class="text-gray-400 text-sm"><span id="greeting">Welcome back</span>, <span id="user-name">Investor</span></p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="liquid-glass-dark rounded-xl px-4 py-2 flex flex-col items-end"><span class="text-xs text-gray-400">Portfolio Value</span> <span id="portfolio-value" class="text-lg font-bold text-green-400">$100,000</span>
+                    </div>
+                    <div class="liquid-glass-dark rounded-xl px-4 py-2 flex flex-col items-end"><span class="text-xs text-gray-400">Cash</span> <span id="cash-balance" class="text-lg font-bold text-white">$100,000</span>
+                    </div>
+                    <div class="liquid-glass-dark rounded-xl px-4 py-2 flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-green-400 pulse-glow"></div><span class="text-sm text-gray-300">Live</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <!-- Main Content -->
+        <main class="relative z-10 flex-1 p-6 pt-0 flex flex-col gap-6">
+            <!-- Search & Add Stock -->
+            <div class="liquid-glass rounded-2xl p-6">
+                <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg> Analyze Stock</h2>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="flex-1 relative"><input type="text" id="stock-input" placeholder="Enter stock symbol (e.g., AAPL, GOOGL, MSFT)" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 transition-all">
+                        <div id="suggestions" class="absolute top-full left-0 right-0 mt-2 liquid-glass-dark rounded-xl overflow-hidden hidden z-20">
+                        </div>
+                    </div><button id="analyze-btn" class="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+       </svg> Analyze </button>
+                </div>
+            </div>
+            <!-- Analysis Panel -->
+            <div id="analysis-panel" class="hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Stock Info & Chart -->
+                    <div class="lg:col-span-2 liquid-glass rounded-2xl p-6">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                            <div>
+                                <div class="flex items-center gap-3">
+                                    <h3 id="stock-symbol" class="text-2xl font-bold">AAPL</h3><span id="stock-change" class="px-3 py-1 rounded-full text-sm font-medium bg-green-500/20 text-green-400">+2.34%</span>
+                                </div>
+                                <p id="stock-name" class="text-gray-400">Apple Inc.</p>
+                            </div>
+                            <div class="text-right">
+                                <p id="stock-price" class="text-3xl font-bold">$178.72</p>
+                                <p class="text-gray-400 text-sm">Current Price</p>
+                            </div>
+                        </div>
+                        <!-- Chart -->
+                        <div class="h-48 flex items-end justify-between gap-1 mb-6 px-2">
+                            <div id="chart-container" class="flex items-end justify-between gap-1 w-full h-full">
+                                <!-- Chart bars will be generated here -->
+                            </div>
+                        </div>
+                        <!-- Time Range -->
+                        <div class="flex gap-2 justify-center flex-wrap"><button class="time-btn px-4 py-2 rounded-lg bg-indigo-500/20 text-indigo-400 text-sm font-medium" data-range="1W">1W</button> <button class="time-btn px-4 py-2 rounded-lg bg-white/5 text-gray-400 text-sm font-medium hover:bg-white/10"
+                                data-range="1M">1M</button> <button class="time-btn px-4 py-2 rounded-lg bg-white/5 text-gray-400 text-sm font-medium hover:bg-white/10" data-range="3M">3M</button> <button class="time-btn px-4 py-2 rounded-lg bg-white/5 text-gray-400 text-sm font-medium hover:bg-white/10"
+                                data-range="1Y">1Y</button> <button class="time-btn px-4 py-2 rounded-lg bg-white/5 text-gray-400 text-sm font-medium hover:bg-white/10" data-range="5Y">5Y</button>
+                        </div>
+                    </div>
+                    <!-- Recommendation Card -->
+                    <div class="liquid-glass rounded-2xl p-6 flex flex-col">
+                        <h3 class="text-lg font-semibold mb-4">AI Analysis</h3>
+                        <div id="recommendation-card" class="flex-1 liquid-glass-dark rounded-xl p-6 flex flex-col items-center justify-center text-center glow-green">
+                            <div id="rec-icon" class="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mb-4">
+                                <svg class="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+         </svg>
+                            </div>
+                            <p id="rec-label" class="text-2xl font-bold text-green-400 mb-2">STRONG BUY</p>
+                            <p id="rec-confidence" class="text-gray-400 text-sm">Confidence: 85%</p>
+                        </div>
+                        <div class="mt-4 flex gap-2"><button id="buy-btn" class="flex-1 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
+         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+         </svg> BUY </button> <button id="sell-btn" class="flex-1 py-3 bg-gradient-to-r from-red-500 to-rose-600 hover:opacity-90 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
+         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+         </svg> SELL </button>
+                        </div><button id="save-btn" class="mt-2 w-full py-2 bg-white/10 hover:bg-white/20 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+        </svg><span id="save-btn-text">Watchlist</span> </button>
+                    </div>
+                </div>
+                <!-- Technical Indicators -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                    <div class="liquid-glass rounded-xl p-4">
+                        <p class="text-gray-400 text-sm mb-1">RSI (14)</p>
+                        <p id="rsi-value" class="text-xl font-bold">58.4</p>
+                        <p id="rsi-status" class="text-green-400 text-sm">Neutral</p>
+                    </div>
+                    <div class="liquid-glass rounded-xl p-4">
+                        <p class="text-gray-400 text-sm mb-1">MACD</p>
+                        <p id="macd-value" class="text-xl font-bold">1.24</p>
+                        <p id="macd-status" class="text-green-400 text-sm">Bullish</p>
+                    </div>
+                    <div class="liquid-glass rounded-xl p-4">
+                        <p class="text-gray-400 text-sm mb-1">50 Day MA</p>
+                        <p id="ma50-value" class="text-xl font-bold">$172.50</p>
+                        <p id="ma50-status" class="text-green-400 text-sm">Above</p>
+                    </div>
+                    <div class="liquid-glass rounded-xl p-4">
+                        <p class="text-gray-400 text-sm mb-1">Volume</p>
+                        <p id="volume-value" class="text-xl font-bold">52.3M</p>
+                        <p id="volume-status" class="text-yellow-400 text-sm">Average</p>
+                    </div>
+                </div>
+            </div>
+            <!-- Featured Stocks Dashboard -->
+            <div class="liquid-glass rounded-2xl p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold flex items-center gap-2">
+                        <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+       </svg> Featured Stocks</h2><span class="text-gray-400 text-sm">Top Picks</span>
+                </div>
+                <div id="featured-stocks" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <!-- Featured stocks will be rendered here -->
+                </div>
+            </div>
+            <!-- Profile Stats -->
+            <div class="liquid-glass rounded-2xl p-6 mb-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-lg font-semibold flex items-center gap-2">
+                        <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+       </svg> Your Profile</h2><button id="profile-toggle" class="text-gray-400 hover:text-white transition-colors">
+       <svg id="profile-chevron" class="w-5 h-5 transform transition-transform" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+       </svg></button>
+                </div>
+                <div id="profile-content" class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <!-- Cash Balance -->
+                    <div class="liquid-glass-dark rounded-xl p-4 text-center">
+                        <div class="w-12 h-12 rounded-full bg-indigo-500/20 flex items-center justify-center mx-auto mb-3">
+                            <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+                        </div>
+                        <p class="text-gray-400 text-sm mb-1">Cash Balance</p>
+                        <p id="profile-cash-balance" class="text-2xl font-bold text-indigo-400">$100,000</p>
+                        <p class="text-xs text-gray-500 mt-1">available</p>
+                    </div>
+                    <!-- Total Stocks Owned -->
+                    <div class="liquid-glass-dark rounded-xl p-4 text-center">
+                        <div class="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-3">
+                            <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+        </svg>
+                        </div>
+                        <p class="text-gray-400 text-sm mb-1">Stocks Owned</p>
+                        <p id="profile-stocks-owned" class="text-2xl font-bold text-green-400">0</p>
+                        <p id="profile-total-shares" class="text-xs text-gray-500 mt-1">0 shares</p>
+                    </div>
+                    <!-- Watchlist Count -->
+                    <div class="liquid-glass-dark rounded-xl p-4 text-center">
+                        <div class="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto mb-3">
+                            <svg class="w-6 h-6 text-yellow-400" fill="currentColor" viewbox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+        </svg>
+                        </div>
+                        <p class="text-gray-400 text-sm mb-1">Watchlist</p>
+                        <p id="profile-watchlist-count" class="text-2xl font-bold text-yellow-400">0</p>
+                        <p class="text-xs text-gray-500 mt-1">saved stocks</p>
+                    </div>
+                    <!-- Total Invested -->
+                    <div class="liquid-glass-dark rounded-xl p-4 text-center">
+                        <div class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center mx-auto mb-3">
+                            <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+                        </div>
+                        <p class="text-gray-400 text-sm mb-1">Total Invested</p>
+                        <p id="profile-invested" class="text-2xl font-bold text-blue-400">$0</p>
+                        <p class="text-xs text-gray-500 mt-1">in positions</p>
+                    </div>
+                    <!-- Portfolio Gain/Loss -->
+                    <div class="liquid-glass-dark rounded-xl p-4 text-center">
+                        <div id="profile-gain-icon" class="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center mx-auto mb-3">
+                            <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+        </svg>
+                        </div>
+                        <p class="text-gray-400 text-sm mb-1">Profit/Loss</p>
+                        <p id="profile-gain-loss" class="text-2xl font-bold text-purple-400">$0</p>
+                        <p id="profile-gain-percent" class="text-xs text-gray-500 mt-1">0%</p>
+                    </div>
+                </div>
+                <!-- Holdings Breakdown (if any) -->
+                <div id="holdings-breakdown" class="mt-6 hidden">
+                    <h3 class="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">Your Holdings</h3>
+                    <div id="holdings-list" class="space-y-2">
+                        <!-- Holdings will be rendered here -->
+                    </div>
+                </div>
+            </div>
+            <!-- Watchlist -->
+            <div class="liquid-glass rounded-2xl p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold flex items-center gap-2">
+                        <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewbox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+       </svg> Your Watchlist</h2><span id="watchlist-count" class="text-gray-400 text-sm">0 stocks</span>
+                </div>
+                <div id="watchlist-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <div id="empty-watchlist" class="col-span-full text-center py-12 text-gray-500">
+                        <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+       </svg>
+                        <p>No stocks in watchlist yet</p>
+                        <p class="text-sm mt-1">Analyze a stock and save it to your watchlist</p>
+                    </div>
+                </div>
+            </div>
+            <!-- Disclaimer -->
+            <div class="text-center text-gray-500 text-xs pb-4">
+                <p>���️ This is a demo tool for educational purposes only. Not financial advice. Always do your own research.</p>
+            </div>
+        </main>
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+            <div class="liquid-glass rounded-2xl p-8 flex flex-col items-center">
+                <div class="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-4"></div>
+                <p id="loading-text" class="text-gray-300">Analyzing...</p>
+            </div>
+        </div>
+        <!-- Toast -->
+        <div id="toast" class="fixed bottom-6 right-6 liquid-glass-dark rounded-xl px-6 py-4 flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+            <svg id="toast-icon" class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+    </svg><span id="toast-message">Stock added to watchlist!</span>
+        </div>
+        <!-- Trade Modal -->
+        <div id="trade-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+            <div class="liquid-glass rounded-2xl p-8 max-w-md w-full mx-4 transform scale-95 opacity-0 transition-all duration-300" id="trade-modal-content">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="text-2xl font-bold" id="trade-modal-title">Buy Stock</h3>
+                        <p class="text-gray-400 text-sm mt-1"><span id="trade-modal-symbol">AAPL</span> - <span id="trade-modal-price">$178.72</span></p>
+                    </div><button id="close-trade-modal" class="text-gray-400 hover:text-white transition-colors">
+       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+       </svg></button>
+                </div>
+                <div class="space-y-4 mb-6">
+                    <div><label for="shares-input" class="block text-sm text-gray-400 mb-2">Number of Shares</label> <input type="number" id="shares-input" min="1" value="1" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-2xl font-bold text-center focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div class="flex justify-between items-center liquid-glass-dark rounded-xl p-4"><span class="text-gray-400">Total Cost</span> <span id="total-cost" class="text-2xl font-bold text-white">$178.72</span>
+                    </div>
+                    <div class="flex justify-between items-center liquid-glass-dark rounded-xl p-4"><span class="text-gray-400">Available Cash</span> <span id="modal-cash-balance" class="text-lg font-semibold text-green-400">$100,000</span>
+                    </div>
+                </div>
+                <div class="flex gap-3"><button id="cancel-trade-btn" class="flex-1 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-semibold transition-all"> Cancel </button> <button id="confirm-trade-btn" class="flex-1 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 rounded-xl font-bold transition-all"> Confirm Trade </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Comprehensive global stock database
+        const stockDatabase = {
+            // US Tech Giants
+            'AAPL': {
+                name: 'Apple Inc.',
+                sector: 'Technology',
+                basePrice: 178.72,
+                country: 'USA'
+            },
+            'GOOGL': {
+                name: 'Alphabet Inc.',
+                sector: 'Technology',
+                basePrice: 141.80,
+                country: 'USA'
+            },
+            'MSFT': {
+                name: 'Microsoft Corporation',
+                sector: 'Technology',
+                basePrice: 378.91,
+                country: 'USA'
+            },
+            'AMZN': {
+                name: 'Amazon.com Inc.',
+                sector: 'Consumer Cyclical',
+                basePrice: 178.25,
+                country: 'USA'
+            },
+            'NVDA': {
+                name: 'NVIDIA Corporation',
+                sector: 'Technology',
+                basePrice: 875.28,
+                country: 'USA'
+            },
+            'META': {
+                name: 'Meta Platforms Inc.',
+                sector: 'Technology',
+                basePrice: 505.95,
+                country: 'USA'
+            },
+            'TSLA': {
+                name: 'Tesla Inc.',
+                sector: 'Automotive',
+                basePrice: 177.48,
+                country: 'USA'
+            },
+            'NFLX': {
+                name: 'Netflix Inc.',
+                sector: 'Communication',
+                basePrice: 628.45,
+                country: 'USA'
+            },
+            'AMD': {
+                name: 'Advanced Micro Devices',
+                sector: 'Technology',
+                basePrice: 164.78,
+                country: 'USA'
+            },
+            'INTC': {
+                name: 'Intel Corporation',
+                sector: 'Technology',
+                basePrice: 43.21,
+                country: 'USA'
+            },
+            'ORCL': {
+                name: 'Oracle Corporation',
+                sector: 'Technology',
+                basePrice: 127.54,
+                country: 'USA'
+            },
+            'CRM': {
+                name: 'Salesforce Inc.',
+                sector: 'Technology',
+                basePrice: 289.34,
+                country: 'USA'
+            },
+            'ADBE': {
+                name: 'Adobe Inc.',
+                sector: 'Technology',
+                basePrice: 567.89,
+                country: 'USA'
+            },
+            'CSCO': {
+                name: 'Cisco Systems Inc.',
+                sector: 'Technology',
+                basePrice: 51.23,
+                country: 'USA'
+            },
+
+            // US Finance
+            'JPM': {
+                name: 'JPMorgan Chase & Co.',
+                sector: 'Financial',
+                basePrice: 198.47,
+                country: 'USA'
+            },
+            'BAC': {
+                name: 'Bank of America Corp.',
+                sector: 'Financial',
+                basePrice: 38.92,
+                country: 'USA'
+            },
+            'WFC': {
+                name: 'Wells Fargo & Company',
+                sector: 'Financial',
+                basePrice: 57.43,
+                country: 'USA'
+            },
+            'GS': {
+                name: 'Goldman Sachs Group',
+                sector: 'Financial',
+                basePrice: 478.21,
+                country: 'USA'
+            },
+            'MS': {
+                name: 'Morgan Stanley',
+                sector: 'Financial',
+                basePrice: 102.34,
+                country: 'USA'
+            },
+            'V': {
+                name: 'Visa Inc.',
+                sector: 'Financial',
+                basePrice: 279.84,
+                country: 'USA'
+            },
+            'MA': {
+                name: 'Mastercard Inc.',
+                sector: 'Financial',
+                basePrice: 456.78,
+                country: 'USA'
+            },
+            'AXP': {
+                name: 'American Express Company',
+                sector: 'Financial',
+                basePrice: 234.56,
+                country: 'USA'
+            },
+
+            // US Healthcare
+            'JNJ': {
+                name: 'Johnson & Johnson',
+                sector: 'Healthcare',
+                basePrice: 147.52,
+                country: 'USA'
+            },
+            'PFE': {
+                name: 'Pfizer Inc.',
+                sector: 'Healthcare',
+                basePrice: 28.45,
+                country: 'USA'
+            },
+            'UNH': {
+                name: 'UnitedHealth Group Inc.',
+                sector: 'Healthcare',
+                basePrice: 523.67,
+                country: 'USA'
+            },
+            'ABBV': {
+                name: 'AbbVie Inc.',
+                sector: 'Healthcare',
+                basePrice: 167.89,
+                country: 'USA'
+            },
+            'LLY': {
+                name: 'Eli Lilly and Company',
+                sector: 'Healthcare',
+                basePrice: 789.34,
+                country: 'USA'
+            },
+            'MRK': {
+                name: 'Merck & Co. Inc.',
+                sector: 'Healthcare',
+                basePrice: 112.45,
+                country: 'USA'
+            },
+
+            // US Consumer
+            'WMT': {
+                name: 'Walmart Inc.',
+                sector: 'Consumer Defensive',
+                basePrice: 163.42,
+                country: 'USA'
+            },
+            'PG': {
+                name: 'Procter & Gamble Co.',
+                sector: 'Consumer Defensive',
+                basePrice: 162.89,
+                country: 'USA'
+            },
+            'KO': {
+                name: 'The Coca-Cola Company',
+                sector: 'Consumer Defensive',
+                basePrice: 61.23,
+                country: 'USA'
+            },
+            'PEP': {
+                name: 'PepsiCo Inc.',
+                sector: 'Consumer Defensive',
+                basePrice: 172.34,
+                country: 'USA'
+            },
+            'MCD': {
+                name: "McDonald's Corporation",
+                sector: 'Consumer Cyclical',
+                basePrice: 298.45,
+                country: 'USA'
+            },
+            'NKE': {
+                name: 'Nike Inc.',
+                sector: 'Consumer Cyclical',
+                basePrice: 87.65,
+                country: 'USA'
+            },
+            'SBUX': {
+                name: 'Starbucks Corporation',
+                sector: 'Consumer Cyclical',
+                basePrice: 95.43,
+                country: 'USA'
+            },
+            'HD': {
+                name: 'The Home Depot Inc.',
+                sector: 'Consumer Cyclical',
+                basePrice: 378.92,
+                country: 'USA'
+            },
+
+            // US Entertainment & Media
+            'DIS': {
+                name: 'The Walt Disney Company',
+                sector: 'Communication',
+                basePrice: 112.34,
+                country: 'USA'
+            },
+            'CMCSA': {
+                name: 'Comcast Corporation',
+                sector: 'Communication',
+                basePrice: 43.21,
+                country: 'USA'
+            },
+
+            // US Energy
+            'XOM': {
+                name: 'Exxon Mobil Corporation',
+                sector: 'Energy',
+                basePrice: 102.45,
+                country: 'USA'
+            },
+            'CVX': {
+                name: 'Chevron Corporation',
+                sector: 'Energy',
+                basePrice: 147.89,
+                country: 'USA'
+            },
+
+            // European Stocks
+            'SAP': {
+                name: 'SAP SE',
+                sector: 'Technology',
+                basePrice: 156.78,
+                country: 'Germany'
+            },
+            'ASML': {
+                name: 'ASML Holding N.V.',
+                sector: 'Technology',
+                basePrice: 921.34,
+                country: 'Netherlands'
+            },
+            'NOVO': {
+                name: 'Novo Nordisk A/S',
+                sector: 'Healthcare',
+                basePrice: 142.56,
+                country: 'Denmark'
+            },
+            'LVS': {
+                name: 'LVMH Moët Hennessy',
+                sector: 'Consumer Cyclical',
+                basePrice: 876.43,
+                country: 'France'
+            },
+            'SIE': {
+                name: 'Siemens AG',
+                sector: 'Industrial',
+                basePrice: 167.89,
+                country: 'Germany'
+            },
+            'NVO': {
+                name: 'Novo Nordisk',
+                sector: 'Healthcare',
+                basePrice: 123.45,
+                country: 'Denmark'
+            },
+            'NESN': {
+                name: 'Nestlé S.A.',
+                sector: 'Consumer Defensive',
+                basePrice: 112.34,
+                country: 'Switzerland'
+            },
+            'ROG': {
+                name: 'Roche Holding AG',
+                sector: 'Healthcare',
+                basePrice: 289.45,
+                country: 'Switzerland'
+            },
+            'OR': {
+                name: "L'Oréal S.A.",
+                sector: 'Consumer Defensive',
+                basePrice: 456.78,
+                country: 'France'
+            },
+            'MC': {
+                name: 'LVMH',
+                sector: 'Consumer Cyclical',
+                basePrice: 789.23,
+                country: 'France'
+            },
+            'TTE': {
+                name: 'TotalEnergies SE',
+                sector: 'Energy',
+                basePrice: 67.89,
+                country: 'France'
+            },
+            'SHEL': {
+                name: 'Shell plc',
+                sector: 'Energy',
+                basePrice: 72.34,
+                country: 'UK'
+            },
+            'BP': {
+                name: 'BP p.l.c.',
+                sector: 'Energy',
+                basePrice: 38.45,
+                country: 'UK'
+            },
+            'HSBA': {
+                name: 'HSBC Holdings plc',
+                sector: 'Financial',
+                basePrice: 7.89,
+                country: 'UK'
+            },
+            'GSK': {
+                name: 'GSK plc',
+                sector: 'Healthcare',
+                basePrice: 42.34,
+                country: 'UK'
+            },
+            'AZN': {
+                name: 'AstraZeneca PLC',
+                sector: 'Healthcare',
+                basePrice: 67.89,
+                country: 'UK'
+            },
+            'VOD': {
+                name: 'Vodafone Group plc',
+                sector: 'Communication',
+                basePrice: 9.12,
+                country: 'UK'
+            },
+
+            // Asian Stocks
+            'BABA': {
+                name: 'Alibaba Group',
+                sector: 'Technology',
+                basePrice: 89.34,
+                country: 'China'
+            },
+            'TSM': {
+                name: 'Taiwan Semiconductor',
+                sector: 'Technology',
+                basePrice: 156.78,
+                country: 'Taiwan'
+            },
+            'TCEHY': {
+                name: 'Tencent Holdings',
+                sector: 'Technology',
+                basePrice: 45.67,
+                country: 'China'
+            },
+            '005930': {
+                name: 'Samsung Electronics',
+                sector: 'Technology',
+                basePrice: 72.34,
+                country: 'South Korea'
+            },
+            'SONY': {
+                name: 'Sony Group Corporation',
+                sector: 'Technology',
+                basePrice: 98.45,
+                country: 'Japan'
+            },
+            'TM': {
+                name: 'Toyota Motor Corporation',
+                sector: 'Automotive',
+                basePrice: 234.56,
+                country: 'Japan'
+            },
+            'HMC': {
+                name: 'Honda Motor Co.',
+                sector: 'Automotive',
+                basePrice: 34.21,
+                country: 'Japan'
+            },
+            'NTT': {
+                name: 'Nippon Telegraph',
+                sector: 'Communication',
+                basePrice: 23.45,
+                country: 'Japan'
+            },
+            '9988': {
+                name: 'Alibaba',
+                sector: 'Technology',
+                basePrice: 89.34,
+                country: 'Hong Kong'
+            },
+            '0700': {
+                name: 'Tencent',
+                sector: 'Technology',
+                basePrice: 378.90,
+                country: 'Hong Kong'
+            },
+            '1299': {
+                name: 'AIA Group',
+                sector: 'Financial',
+                basePrice: 67.89,
+                country: 'Hong Kong'
+            },
+            'INFY': {
+                name: 'Infosys Limited',
+                sector: 'Technology',
+                basePrice: 18.45,
+                country: 'India'
+            },
+            'TCS': {
+                name: 'Tata Consultancy Services',
+                sector: 'Technology',
+                basePrice: 45.67,
+                country: 'India'
+            },
+            'RELIANCE': {
+                name: 'Reliance Industries',
+                sector: 'Energy',
+                basePrice: 34.56,
+                country: 'India'
+            },
+
+            // Australian Stocks
+            'BHP': {
+                name: 'BHP Group Limited',
+                sector: 'Materials',
+                basePrice: 56.78,
+                country: 'Australia'
+            },
+            'CBA': {
+                name: 'Commonwealth Bank',
+                sector: 'Financial',
+                basePrice: 98.45,
+                country: 'Australia'
+            },
+            'CSL': {
+                name: 'CSL Limited',
+                sector: 'Healthcare',
+                basePrice: 234.56,
+                country: 'Australia'
+            },
+
+            // Canadian Stocks
+            'RY': {
+                name: 'Royal Bank of Canada',
+                sector: 'Financial',
+                basePrice: 112.34,
+                country: 'Canada'
+            },
+            'TD': {
+                name: 'Toronto-Dominion Bank',
+                sector: 'Financial',
+                basePrice: 76.89,
+                country: 'Canada'
+            },
+            'SHOP': {
+                name: 'Shopify Inc.',
+                sector: 'Technology',
+                basePrice: 78.45,
+                country: 'Canada'
+            },
+            'CNQ': {
+                name: 'Canadian Natural Resources',
+                sector: 'Energy',
+                basePrice: 67.89,
+                country: 'Canada'
+            },
+
+            // Latin American
+            'VALE': {
+                name: 'Vale S.A.',
+                sector: 'Materials',
+                basePrice: 12.34,
+                country: 'Brazil'
+            },
+            'PBR': {
+                name: 'Petróleo Brasileiro',
+                sector: 'Energy',
+                basePrice: 14.56,
+                country: 'Brazil'
+            },
+            'ITUB': {
+                name: 'Itaú Unibanco',
+                sector: 'Financial',
+                basePrice: 6.78,
+                country: 'Brazil'
+            },
+
+            // Emerging Markets
+            'GAZP': {
+                name: 'Gazprom PJSC',
+                sector: 'Energy',
+                basePrice: 4.56,
+                country: 'Russia'
+            },
+            'SAN': {
+                name: 'Banco Santander',
+                sector: 'Financial',
+                basePrice: 4.23,
+                country: 'Spain'
+            },
+            'BBVA': {
+                name: 'Banco Bilbao Vizcaya',
+                sector: 'Financial',
+                basePrice: 8.90,
+                country: 'Spain'
+            },
+            'IBE': {
+                name: 'Iberdrola S.A.',
+                sector: 'Utilities',
+                basePrice: 11.45,
+                country: 'Spain'
+            },
+
+            // More US Blue Chips
+            'IBM': {
+                name: 'IBM Corporation',
+                sector: 'Technology',
+                basePrice: 187.34,
+                country: 'USA'
+            },
+            'T': {
+                name: 'AT&T Inc.',
+                sector: 'Communication',
+                basePrice: 16.78,
+                country: 'USA'
+            },
+            'VZ': {
+                name: 'Verizon Communications',
+                sector: 'Communication',
+                basePrice: 41.23,
+                country: 'USA'
+            },
+            'DUK': {
+                name: 'Duke Energy Corporation',
+                sector: 'Utilities',
+                basePrice: 98.45,
+                country: 'USA'
+            },
+            'NEE': {
+                name: 'NextEra Energy Inc.',
+                sector: 'Utilities',
+                basePrice: 67.89,
+                country: 'USA'
+            },
+            'BA': {
+                name: 'The Boeing Company',
+                sector: 'Industrial',
+                basePrice: 178.45,
+                country: 'USA'
+            },
+            'CAT': {
+                name: 'Caterpillar Inc.',
+                sector: 'Industrial',
+                basePrice: 312.67,
+                country: 'USA'
+            },
+            'MMM': {
+                name: '3M Company',
+                sector: 'Industrial',
+                basePrice: 89.23,
+                country: 'USA'
+            },
+            'GE': {
+                name: 'General Electric',
+                sector: 'Industrial',
+                basePrice: 123.45,
+                country: 'USA'
+            }
+        };
+
+        // Stock logos (SVG with authentic brand designs)
+        const stockLogos = {
+            'AAPL': {
+                svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>',
+                color: '#555555',
+                bg: '#ffffff'
+            },
+            'GOOGL': {
+                svg: '<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>',
+                color: '#4285F4',
+                bg: '#ffffff'
+            },
+            'MSFT': {
+                svg: '<svg viewBox="0 0 24 24"><path fill="#F25022" d="M1 1h10v10H1z"/><path fill="#00A4EF" d="M1 13h10v10H1z"/><path fill="#7FBA00" d="M13 1h10v10H13z"/><path fill="#FFB900" d="M13 13h10v10H13z"/></svg>',
+                color: '#00A4EF',
+                bg: '#ffffff'
+            },
+            'AMZN': {
+                svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M.045 18.02c.072-.116.187-.124.348-.022 3.636 2.11 7.594 3.166 11.87 3.166 2.852 0 5.668-.533 8.447-1.595l.315-.14c.138-.06.234-.1.293-.13.226-.088.39-.046.525.13.12.174.09.336-.12.48-.256.19-.6.41-1.006.654-1.244.743-2.64 1.316-4.185 1.726-1.53.406-3.045.608-4.516.608-2.855 0-5.556-.596-8.103-1.788-1.802-.844-3.374-1.946-4.713-3.304-.168-.168-.21-.314-.135-.438zm23.71-5.07c-.06.39-.292.577-.708.577-.187 0-.384-.03-.594-.086-.21-.06-.39-.06-.547 0-.196.042-.436.104-.73.19-.293.088-.53.132-.716.132-.78 0-1.17-.36-1.17-1.085 0-.316.06-.63.18-.934.12-.316.316-.57.58-.77.27-.2.6-.298 1.005-.298.42 0 .87.12 1.336.357.48.24.78.54.91.89.074.21.074.434 0 .675-.03.21-.074.39-.136.547zm-1.006-2.076c0-.15-.03-.3-.09-.452-.06-.15-.18-.27-.346-.346-.165-.09-.375-.13-.63-.13-.63 0-1.155.36-1.575 1.08-.12.21-.195.42-.225.63l-.03.27c0 .18.03.346.09.48.06.136.165.24.315.316.165.09.375.135.63.135.225 0 .436-.045.63-.135.195-.09.375-.21.555-.36.18-.15.33-.315.452-.495.12-.18.21-.36.27-.555.06-.18.09-.375.09-.57v-.03l-.136.165z"/></svg>',
+                color: '#FF9900',
+                bg: '#232F3E'
+            },
+            'NVDA': {
+                svg: '<svg viewBox="0 0 24 24" fill="#76B900"><path d="M6.74 17.3c-1.14-1.95-1.64-4.46-1.64-7.35 0-2.8.48-5.13 1.53-6.96L5.59 2C4.18 4.16 3.5 6.96 3.5 10.3c0 3.43.73 6.35 2.2 8.73l1.04-.73zM11.15 2c-2.95 0-5.5.95-7.65 2.85l1.04.73c1.87-1.65 4.09-2.47 6.66-2.47 4.46 0 7.52 2.58 9.2 7.73l1.07-.33C19.73 4.97 16.14 2 11.15 2zm7.53 9.35c-.37-1.55-.94-2.83-1.7-3.86-.77-1.02-1.7-1.8-2.8-2.33-1.1-.54-2.34-.8-3.73-.8-1.64 0-3.06.36-4.25 1.08v1.33c1.13-.86 2.5-1.29 4.1-1.29 1.13 0 2.14.22 3.03.66.88.44 1.6 1.06 2.14 1.86.54.8.94 1.75 1.2 2.84.25 1.1.38 2.3.38 3.6 0 1.47-.15 2.78-.46 3.93-.3 1.14-.75 2.1-1.35 2.87-.6.77-1.35 1.36-2.25 1.76-.9.4-1.93.6-3.09.6-1.7 0-3.18-.44-4.43-1.33v1.42c1.27.73 2.76 1.1 4.48 1.1 1.47 0 2.77-.25 3.9-.76 1.13-.5 2.07-1.22 2.84-2.14.76-.93 1.34-2.04 1.73-3.34.4-1.3.6-2.73.6-4.3 0-1.43-.13-2.73-.38-3.9z"/></svg>',
+                color: '#76B900',
+                bg: '#1a1a1a'
+            },
+            'META': {
+                svg: '<svg viewBox="0 0 24 24" fill="#0668E1"><path d="M20.5 8.34c-.67-2.1-2.43-3.7-4.53-4.13-1.28-.26-2.62-.09-3.83.48-1.21.57-2.21 1.5-2.86 2.65-.65-1.15-1.65-2.08-2.86-2.65-1.21-.57-2.55-.74-3.83-.48C.48 4.64-1.28 6.24-1.95 8.34c-.57 1.8-.3 3.74.74 5.33L8.36 23c.44.57 1.12.89 1.84.89h0c.72 0 1.4-.32 1.84-.89l9.57-9.33c1.04-1.59 1.31-3.53.74-5.33zm-2.07 4.45l-8.63 8.4-8.63-8.4c-.72-1.09-.91-2.43-.52-3.69.46-1.43 1.57-2.54 3-3.01.88-.29 1.8-.19 2.63.23.83.42 1.5 1.14 1.87 2.05.26.63.86 1.04 1.53 1.04h0c.67 0 1.27-.41 1.53-1.04.37-.91 1.04-1.63 1.87-2.05.83-.42 1.75-.52 2.63-.23 1.43.47 2.54 1.58 3 3.01.39 1.26.2 2.6-.52 3.69z"/></svg>',
+                color: '#0668E1',
+                bg: '#ffffff'
+            },
+            'TSLA': {
+                svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 5.362l2.475.308c1.583.197 3.35.78 4.713 1.693.742.498 1.286.97 1.61 1.42H3.202c.324-.45.868-.922 1.61-1.42 1.363-.913 3.13-1.496 4.713-1.693L12 5.362zM21.5 8.5c0-2.236-1.91-4-5-4S12 4.818 12 6.5s-.41 3.5-5 3.5c-3.09 0-5 1.764-5 4 0 .414.072.812.203 1.183L5.5 20h13l3.297-4.817c.131-.37.203-.77.203-1.183z"/></svg>',
+                color: '#E82127',
+                bg: '#000000'
+            },
+            'NFLX': {
+                svg: '<svg viewBox="0 0 24 24" fill="#E50914"><path d="M5.398 0v.006c3.028 8.556 5.37 15.175 8.348 23.596 2.344.058 4.85.398 4.854.398-2.8-7.924-5.923-16.747-8.487-24zm8.489 0v9.63L18.6 22.951c-.043-7.86-.004-15.913.002-22.95zM5.398 1.05V24c1.873-.225 2.81-.312 4.715-.398v-9.22z"/></svg>',
+                color: '#E50914',
+                bg: '#000000'
+            },
+            'AMD': {
+                svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.93 8.508L15.508 5.09h-6.73l-5.39 5.39v6.73l3.422 3.423h6.73l5.39-5.39zM11.27 18.094h-3.95l-3.422-3.423v-3.95l3.422-3.422h3.95l3.423 3.423v3.95zm5.987-7.702l-3.224 3.224v6.448l3.224-3.224z"/></svg>',
+                color: '#ED1C24',
+                bg: '#000000'
+            },
+            'INTC': {
+                svg: '<svg viewBox="0 0 24 24" fill="#0071C5"><path d="M11.34 6.55v10.9h1.6V6.55zm-3.6 0v10.9h1.6V6.55zm7.2 0v10.9h1.6V6.55zm3.6 0v10.9h1.6V6.55zm-14.4 0v10.9h1.6V6.55z"/></svg>',
+                color: '#0071C5',
+                bg: '#ffffff'
+            },
+            'ORCL': {
+                svg: '<svg viewBox="0 0 24 24" fill="#F80000"><path d="M16.412 4.412h-8.824C4.083 4.412 1 7.494 1 11c0 3.506 3.083 6.588 6.588 6.588h8.824C19.917 17.588 23 14.506 23 11c0-3.506-3.083-6.588-6.588-6.588zm0 10.176h-8.824C5.671 14.588 4 12.918 4 11s1.671-3.588 3.588-3.588h8.824C18.329 7.412 20 9.082 20 11s-1.671 3.588-3.588 3.588z"/></svg>',
+                color: '#F80000',
+                bg: '#ffffff'
+            },
+            'DIS': {
+                svg: '<svg viewBox="0 0 24 24" fill="#113CCF"><path d="M16.523 12.782c-.407.41-1.018.608-1.723.608-.644 0-1.167-.133-1.574-.398.14-.398.28-.867.42-1.407.21-1.016.35-1.852.42-2.508.14-1.36-.14-2.306-.84-2.836-.644-.457-1.598-.68-2.871-.68-1.86 0-3.528.504-4.97 1.512-.63.445-1.19.96-1.68 1.544v-.012c-.77-.843-1.68-1.407-2.73-1.69.14-.164.28-.316.42-.457.42-.445.91-.843 1.47-1.194 1.68-1.05 3.67-1.575 5.97-1.575 1.4 0 2.59.187 3.57.562 1.05.398 1.86 1.01 2.45 1.828.56.794.84 1.782.84 2.965 0 .468-.07.983-.21 1.545-.14.562-.35 1.194-.63 1.896-.28.702-.63 1.428-1.05 2.177-.42.75-.91 1.452-1.47 2.107-.56.656-1.19 1.218-1.89 1.685-.7.468-1.47.82-2.31 1.054-.84.234-1.75.35-2.73.35-1.12 0-2.1-.152-2.94-.456-.84-.305-1.54-.726-2.1-1.265-.56-.538-.98-1.159-1.26-1.862-.28-.703-.42-1.452-.42-2.248 0-.937.17-1.827.51-2.67.34-.842.82-1.6 1.44-2.272.62-.67 1.36-1.242 2.22-1.71.86-.468 1.82-.82 2.87-1.054 1.05-.234 2.17-.35 3.36-.35h.56c.7 0 1.33.07 1.89.21-.28.702-.49 1.428-.63 2.177-.42-.14-.91-.21-1.47-.21h-.49c-1.05 0-2.01.14-2.87.42-.86.28-1.61.655-2.24 1.125-.63.47-1.12 1.01-1.47 1.628-.35.62-.52 1.265-.52 1.935 0 .89.25 1.593.75 2.108.5.515 1.19.773 2.07.773 1.19 0 2.24-.293 3.15-.88.91-.585 1.68-1.382 2.31-2.39.63-1.01 1.12-2.154 1.47-3.432.35-1.277.52-2.612.52-4.004 0-1.044-.17-1.97-.52-2.777-.35-.808-.84-1.476-1.47-2.004-.63-.527-1.4-.925-2.31-1.194-.91-.27-1.93-.398-3.08-.398-2.24 0-4.27.445-6.09 1.335-1.82.89-3.22 2.108-4.2 3.653C.42 9.654 0 11.375 0 13.258c0 1.39.28 2.635.84 3.735.56 1.1 1.33 2.037 2.31 2.812.98.774 2.13 1.37 3.45 1.78 1.32.41 2.73.62 4.23.62 1.26 0 2.45-.15 3.57-.44 1.12-.29 2.17-.7 3.15-1.22.98-.52 1.86-1.13 2.66-1.83.8-.7 1.47-1.45 2.03-2.26.56-.81.98-1.65 1.26-2.52.28-.87.42-1.76.42-2.67 0-1.16-.21-2.13-.63-2.91z"/></svg>',
+                color: '#113CCF',
+                bg: '#ffffff'
+            }
+        };
+
+        // Featured stocks to display
+        const featuredStocks = ['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'NVDA', 'META', 'TSLA', 'NFLX', 'AMD', 'INTC', 'ORCL', 'DIS'];
+
+        // App state
+        let watchlist = [];
+        let currentStock = null;
+        let isLoading = false;
+        let cashBalance = 100000;
+        let portfolio = [];
+        let currentTradeType = 'buy';
+        let isLoggedIn = false;
+        let currentUser = null;
+
+        // Default config
+        const defaultConfig = {
+            app_title: 'TradePro',
+            welcome_text: 'Welcome back',
+            user_name: 'Trader',
+            starting_balance: '100000',
+            primary_color: '#6366f1',
+            surface_color: 'rgba(255, 255, 255, 0.1)',
+            text_color: '#ffffff',
+            accent_color: '#22c55e',
+            secondary_color: '#a855f7',
+            font_family: 'Space Grotesk',
+            font_size: 16
+        };
+
+        // Data handler for Data SDK
+        const dataHandler = {
+            onDataChanged(data) {
+                watchlist = data;
+                portfolio = data.filter(d => d.transaction_type === 'buy');
+                renderWatchlist();
+                updateSaveButton();
+                updateBalanceDisplay();
+                updateProfileStats();
+                updateTaskbarDisplay();
+            }
+        };
+
+        // Generate historical data
+        function generateHistoricalData(basePrice, days = 30) {
+            const data = [];
+            let price = basePrice * (0.85 + Math.random() * 0.15);
+
+            for (let i = 0; i < days; i++) {
+                const change = (Math.random() - 0.48) * (basePrice * 0.03);
+                price = Math.max(price + change, basePrice * 0.7);
+                data.push({
+                    day: i,
+                    price: price,
+                    volume: Math.floor(30000000 + Math.random() * 50000000)
+                });
+            }
+
+            // Ensure last price is close to base price
+            data[data.length - 1].price = basePrice;
+            return data;
+        }
+
+        // Calculate technical indicators
+        function calculateIndicators(data, basePrice) {
+            const prices = data.map(d => d.price);
+            const lastPrice = prices[prices.length - 1];
+            const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+
+            // RSI calculation (simplified)
+            let gains = 0,
+                losses = 0;
+            for (let i = 1; i < prices.length; i++) {
+                const diff = prices[i] - prices[i - 1];
+                if (diff > 0) gains += diff;
+                else losses -= diff;
+            }
+            const rs = gains / (losses || 1);
+            const rsi = 100 - (100 / (1 + rs));
+
+            // MACD (simplified)
+            const shortEMA = prices.slice(-12).reduce((a, b) => a + b, 0) / 12;
+            const longEMA = prices.slice(-26).reduce((a, b) => a + b, 0) / Math.min(26, prices.length);
+            const macd = ((shortEMA - longEMA) / longEMA * 100).toFixed(2);
+
+            // 50 day MA
+            const ma50 = avgPrice;
+
+            // Volume
+            const avgVolume = data.reduce((a, b) => a + b.volume, 0) / data.length;
+
+            return {
+                rsi: rsi.toFixed(1),
+                rsiStatus: rsi > 70 ? 'Overbought' : rsi < 30 ? 'Oversold' : 'Neutral',
+                macd: macd,
+                macdStatus: parseFloat(macd) > 0 ? 'Bullish' : 'Bearish',
+                ma50: ma50.toFixed(2),
+                ma50Status: lastPrice > ma50 ? 'Above' : 'Below',
+                volume: (avgVolume / 1000000).toFixed(1) + 'M',
+                volumeStatus: avgVolume > 40000000 ? 'High' : avgVolume < 35000000 ? 'Low' : 'Average'
+            };
+        }
+
+        // Generate recommendation
+        function generateRecommendation(indicators, priceChange) {
+            let score = 50;
+
+            // RSI contribution
+            const rsi = parseFloat(indicators.rsi);
+            if (rsi < 30) score += 20;
+            else if (rsi < 45) score += 10;
+            else if (rsi > 70) score -= 20;
+            else if (rsi > 55) score -= 5;
+
+            // MACD contribution
+            const macd = parseFloat(indicators.macd);
+            if (macd > 1) score += 15;
+            else if (macd > 0) score += 8;
+            else if (macd < -1) score -= 15;
+            else score -= 5;
+
+            // MA contribution
+            if (indicators.ma50Status === 'Above') score += 10;
+            else score -= 10;
+
+            // Price momentum
+            if (priceChange > 3) score += 10;
+            else if (priceChange > 0) score += 5;
+            else if (priceChange < -3) score -= 10;
+            else score -= 5;
+
+            // Add some randomness
+            score += (Math.random() - 0.5) * 10;
+            score = Math.max(10, Math.min(95, score));
+
+            let recommendation, color, glowClass;
+            if (score >= 75) {
+                recommendation = 'STRONG BUY';
+                color = 'text-green-400';
+                glowClass = 'glow-green';
+            } else if (score >= 60) {
+                recommendation = 'BUY';
+                color = 'text-green-400';
+                glowClass = 'glow-green';
+            } else if (score >= 45) {
+                recommendation = 'HOLD';
+                color = 'text-yellow-400';
+                glowClass = 'glow-yellow';
+            } else if (score >= 30) {
+                recommendation = 'SELL';
+                color = 'text-red-400';
+                glowClass = 'glow-red';
+            } else {
+                recommendation = 'STRONG SELL';
+                color = 'text-red-400';
+                glowClass = 'glow-red';
+            }
+
+            return {
+                recommendation,
+                confidence: Math.round(score),
+                color,
+                glowClass
+            };
+        }
+
+        // Render chart
+        function renderChart(data) {
+            const container = document.getElementById('chart-container');
+            const maxPrice = Math.max(...data.map(d => d.price));
+            const minPrice = Math.min(...data.map(d => d.price));
+            const range = maxPrice - minPrice || 1;
+
+            container.innerHTML = data.map((d, i) => {
+                const height = ((d.price - minPrice) / range) * 100;
+                const isUp = i === 0 || d.price >= data[i - 1].price;
+                const color = isUp ? 'bg-green-500' : 'bg-red-500';
+                return `<div class="chart-bar flex-1 ${color} rounded-t opacity-80 hover:opacity-100 transition-opacity cursor-pointer" 
+                    style="height: ${Math.max(5, height)}%"
+                    title="$${d.price.toFixed(2)}"></div>`;
+            }).join('');
+        }
+
+        // Analyze stock
+        async function analyzeStock(symbol) {
+            const stock = stockDatabase[symbol.toUpperCase()];
+            if (!stock) {
+                showToast('Stock not found. Try AAPL, GOOGL, MSFT, etc.', 'error');
+                return;
+            }
+
+            showLoading('Analyzing ' + symbol.toUpperCase() + '...');
+
+            // Simulate API delay
+            await new Promise(r => setTimeout(r, 1500));
+
+            const historicalData = generateHistoricalData(stock.basePrice, 30);
+            const priceChange = ((stock.basePrice - historicalData[0].price) / historicalData[0].price * 100);
+            const indicators = calculateIndicators(historicalData, stock.basePrice);
+            const rec = generateRecommendation(indicators, priceChange);
+
+            currentStock = {
+                symbol: symbol.toUpperCase(),
+                name: stock.name,
+                price: stock.basePrice,
+                change: priceChange,
+                indicators,
+                recommendation: rec,
+                historicalData
+            };
+
+            // Update UI
+            document.getElementById('stock-symbol').textContent = currentStock.symbol;
+            document.getElementById('stock-name').textContent = currentStock.name;
+            document.getElementById('stock-price').textContent = '$' + currentStock.price.toFixed(2);
+
+            const changeEl = document.getElementById('stock-change');
+            const changeText = (priceChange >= 0 ? '+' : '') + priceChange.toFixed(2) + '%';
+            changeEl.textContent = changeText;
+            changeEl.className = `px-3 py-1 rounded-full text-sm font-medium ${priceChange >= 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`;
+
+            // Update recommendation
+            const recCard = document.getElementById('recommendation-card');
+            recCard.className = `flex-1 liquid-glass-dark rounded-xl p-6 flex flex-col items-center justify-center text-center ${rec.glowClass}`;
+
+            const recIcon = document.getElementById('rec-icon');
+            const isBuy = rec.recommendation.includes('BUY');
+            const isHold = rec.recommendation === 'HOLD';
+            recIcon.className = `w-16 h-16 rounded-full ${isBuy ? 'bg-green-500/20' : isHold ? 'bg-yellow-500/20' : 'bg-red-500/20'} flex items-center justify-center mb-4`;
+            recIcon.innerHTML = isBuy ?
+                '<svg class="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>' :
+                isHold ?
+                '<svg class="w-8 h-8 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>' :
+                '<svg class="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>';
+
+            document.getElementById('rec-label').textContent = rec.recommendation;
+            document.getElementById('rec-label').className = `text-2xl font-bold ${rec.color} mb-2`;
+            document.getElementById('rec-confidence').textContent = 'Confidence: ' + rec.confidence + '%';
+
+            // Update indicators
+            document.getElementById('rsi-value').textContent = indicators.rsi;
+            document.getElementById('rsi-status').textContent = indicators.rsiStatus;
+            document.getElementById('rsi-status').className = `text-sm ${indicators.rsiStatus === 'Neutral' ? 'text-green-400' : indicators.rsiStatus === 'Oversold' ? 'text-yellow-400' : 'text-red-400'}`;
+
+            document.getElementById('macd-value').textContent = indicators.macd;
+            document.getElementById('macd-status').textContent = indicators.macdStatus;
+            document.getElementById('macd-status').className = `text-sm ${indicators.macdStatus === 'Bullish' ? 'text-green-400' : 'text-red-400'}`;
+
+            document.getElementById('ma50-value').textContent = '$' + indicators.ma50;
+            document.getElementById('ma50-status').textContent = indicators.ma50Status;
+            document.getElementById('ma50-status').className = `text-sm ${indicators.ma50Status === 'Above' ? 'text-green-400' : 'text-red-400'}`;
+
+            document.getElementById('volume-value').textContent = indicators.volume;
+            document.getElementById('volume-status').textContent = indicators.volumeStatus;
+            document.getElementById('volume-status').className = `text-sm ${indicators.volumeStatus === 'High' ? 'text-green-400' : indicators.volumeStatus === 'Average' ? 'text-yellow-400' : 'text-red-400'}`;
+
+            // Render chart
+            renderChart(historicalData);
+
+            // Show panel
+            document.getElementById('analysis-panel').classList.remove('hidden');
+
+            // Update save button
+            updateSaveButton();
+
+            hideLoading();
+        }
+
+        // Update save button state
+        function updateSaveButton() {
+            const saveBtn = document.getElementById('save-btn');
+            const saveBtnText = document.getElementById('save-btn-text');
+
+            if (!currentStock) return;
+
+            const isInWatchlist = watchlist.some(s => s.symbol === currentStock.symbol);
+            if (isInWatchlist) {
+                saveBtnText.textContent = 'Remove from Watchlist';
+                saveBtn.classList.add('bg-red-500/20');
+                saveBtn.classList.remove('bg-white/10');
+            } else {
+                saveBtnText.textContent = 'Save to Watchlist';
+                saveBtn.classList.remove('bg-red-500/20');
+                saveBtn.classList.add('bg-white/10');
+            }
+        }
+
+        // Render featured stocks
+        function renderFeaturedStocks() {
+            const container = document.getElementById('featured-stocks');
+
+            container.innerHTML = featuredStocks.map(symbol => {
+                const stock = stockDatabase[symbol];
+                const logo = stockLogos[symbol];
+                const priceChange = (Math.random() - 0.5) * 6;
+                const isUp = priceChange >= 0;
+
+                return `
+          <div class="featured-stock-card liquid-glass-dark rounded-xl p-4 cursor-pointer stock-card transition-all hover:scale-105" data-symbol="${symbol}">
+            <div class="flex flex-col items-center">
+              <div class="w-14 h-14 rounded-xl mb-3 flex items-center justify-center text-2xl font-bold shadow-lg p-2" style="background: ${logo.bg}; color: ${logo.color}">
+                ${logo.svg}
+              </div>
+              <p class="font-bold text-sm mb-1">${symbol}</p>
+              <p class="text-xl font-semibold mb-1">$${stock.basePrice.toFixed(2)}</p>
+              <p class="text-xs ${isUp ? 'text-green-400' : 'text-red-400'}">
+                ${isUp ? '↑' : '↓'} ${Math.abs(priceChange).toFixed(2)}%
+              </p>
+            </div>
+          </div>
+        `;
+            }).join('');
+        }
+
+        // Render watchlist
+        function renderWatchlist() {
+            const container = document.getElementById('watchlist-container');
+            const emptyState = document.getElementById('empty-watchlist');
+            const countEl = document.getElementById('watchlist-count');
+
+            countEl.textContent = watchlist.length + ' stock' + (watchlist.length !== 1 ? 's' : '');
+
+            if (watchlist.length === 0) {
+                emptyState.classList.remove('hidden');
+                // Remove all stock cards but keep empty state
+                const cards = container.querySelectorAll('.stock-card');
+                cards.forEach(card => card.remove());
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            // Get existing cards
+            const existingCards = new Map();
+            container.querySelectorAll('.stock-card').forEach(card => {
+                existingCards.set(card.dataset.id, card);
+            });
+
+            // Update or create cards
+            watchlist.forEach(stock => {
+                const stockInfo = stockDatabase[stock.symbol] || {
+                    name: stock.name,
+                    basePrice: stock.last_price
+                };
+                const change = ((stockInfo.basePrice - stock.last_price) / stock.last_price * 100) || (Math.random() - 0.5) * 6;
+                const isUp = change >= 0;
+
+                if (existingCards.has(stock.__backendId)) {
+                    // Update existing card
+                    const card = existingCards.get(stock.__backendId);
+                    card.querySelector('.stock-card-price').textContent = '$' + stock.last_price.toFixed(2);
+                    card.querySelector('.stock-card-change').textContent = (isUp ? '+' : '') + change.toFixed(2) + '%';
+                    card.querySelector('.stock-card-change').className = `stock-card-change text-sm ${isUp ? 'text-green-400' : 'text-red-400'}`;
+                    card.querySelector('.stock-card-rec').textContent = stock.recommendation;
+                    existingCards.delete(stock.__backendId);
+                } else {
+                    // Create new card
+                    const card = document.createElement('div');
+                    card.className = 'stock-card liquid-glass-dark rounded-xl p-4 cursor-pointer';
+                    card.dataset.id = stock.__backendId;
+                    card.innerHTML = `
+            <div class="flex justify-between items-start mb-3">
+              <div>
+                <p class="font-bold text-lg">${stock.symbol}</p>
+                <p class="text-gray-400 text-sm truncate max-w-[120px]">${stock.name}</p>
+              </div>
+              <button class="delete-btn text-gray-500 hover:text-red-400 transition-colors p-1" data-id="${stock.__backendId}">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+            <div class="flex justify-between items-end">
+              <div>
+                <p class="stock-card-price text-xl font-semibold">$${stock.last_price.toFixed(2)}</p>
+                <p class="stock-card-change text-sm ${isUp ? 'text-green-400' : 'text-red-400'}">${isUp ? '+' : ''}${change.toFixed(2)}%</p>
+              </div>
+              <span class="stock-card-rec px-2 py-1 rounded-lg text-xs font-medium ${
+                stock.recommendation.includes('BUY') ? 'bg-green-500/20 text-green-400' :
+                stock.recommendation === 'HOLD' ? 'bg-yellow-500/20 text-yellow-400' :
+                'bg-red-500/20 text-red-400'
+              }">${stock.recommendation}</span>
+            </div>
+          `;
+
+                    // Click to analyze
+                    card.addEventListener('click', (e) => {
+                        if (!e.target.closest('.delete-btn')) {
+                            document.getElementById('stock-input').value = stock.symbol;
+                            analyzeStock(stock.symbol);
+                        }
+                    });
+
+                    container.appendChild(card);
+                }
+            });
+
+            // Remove deleted cards
+            existingCards.forEach(card => card.remove());
+        }
+
+        // Save/remove from watchlist
+        async function toggleWatchlist() {
+            if (!currentStock || isLoading) return;
+
+            const existing = watchlist.find(s => s.symbol === currentStock.symbol);
+
+            if (existing) {
+                // Remove
+                showLoading('Removing...');
+                const result = await window.dataSdk.delete(existing);
+                hideLoading();
+                if (result.isOk) {
+                    showToast(currentStock.symbol + ' removed from watchlist', 'success');
+                } else {
+                    showToast('Failed to remove stock', 'error');
+                }
+            } else {
+                // Check limit
+                if (watchlist.length >= 999) {
+                    showToast('Watchlist limit reached (999 stocks)', 'error');
+                    return;
+                }
+
+                // Add
+                showLoading('Saving...');
+                const result = await window.dataSdk.create({
+                    symbol: currentStock.symbol,
+                    name: currentStock.name,
+                    added_at: new Date().toISOString(),
+                    last_price: currentStock.price,
+                    recommendation: currentStock.recommendation.recommendation
+                });
+                hideLoading();
+                if (result.isOk) {
+                    showToast(currentStock.symbol + ' added to watchlist!', 'success');
+                } else {
+                    showToast('Failed to save stock', 'error');
+                }
+            }
+        }
+
+        // Show suggestions
+        function showSuggestions(query) {
+            const suggestionsEl = document.getElementById('suggestions');
+            if (!query) {
+                suggestionsEl.classList.add('hidden');
+                return;
+            }
+
+            const matches = Object.entries(stockDatabase)
+                .filter(([symbol, data]) =>
+                    symbol.toLowerCase().includes(query.toLowerCase()) ||
+                    data.name.toLowerCase().includes(query.toLowerCase()) ||
+                    data.country.toLowerCase().includes(query.toLowerCase())
+                )
+                .slice(0, 8);
+
+            if (matches.length === 0) {
+                suggestionsEl.classList.add('hidden');
+                return;
+            }
+
+            suggestionsEl.innerHTML = matches.map(([symbol, data]) => `
+        <div class="suggestion-item px-4 py-3 hover:bg-white/10 cursor-pointer flex justify-between items-center" data-symbol="${symbol}">
+          <div>
+            <span class="font-semibold">${symbol}</span>
+            <span class="text-gray-400 text-sm ml-2">${data.name}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs px-2 py-1 rounded-full bg-white/5">${data.country}</span>
+            <span class="text-gray-500 text-sm">${data.sector}</span>
+          </div>
+        </div>
+      `).join('');
+
+            suggestionsEl.classList.remove('hidden');
+        }
+
+        // Loading states
+        function showLoading(text = 'Loading...') {
+            isLoading = true;
+            document.getElementById('loading-text').textContent = text;
+            document.getElementById('loading-overlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            isLoading = false;
+            document.getElementById('loading-overlay').classList.add('hidden');
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            const msg = document.getElementById('toast-message');
+
+            msg.textContent = message;
+
+            if (type === 'success') {
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>';
+                icon.className = 'w-5 h-5 text-green-400';
+            } else {
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>';
+                icon.className = 'w-5 h-5 text-red-400';
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        // Open trade modal
+        function openTradeModal(type) {
+            if (!currentStock) return;
+
+            currentTradeType = type;
+            const modal = document.getElementById('trade-modal');
+            const modalContent = document.getElementById('trade-modal-content');
+            const title = document.getElementById('trade-modal-title');
+            const confirmBtn = document.getElementById('confirm-trade-btn');
+
+            title.textContent = type === 'buy' ? 'Buy Stock' : 'Sell Stock';
+            document.getElementById('trade-modal-symbol').textContent = currentStock.symbol;
+            document.getElementById('trade-modal-price').textContent = '$' + currentStock.price.toFixed(2);
+            document.getElementById('shares-input').value = '1';
+            document.getElementById('modal-cash-balance').textContent = '$' + cashBalance.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+
+            if (type === 'buy') {
+                confirmBtn.className = 'flex-1 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 rounded-xl font-bold transition-all';
+                confirmBtn.textContent = 'Confirm Buy';
+            } else {
+                confirmBtn.className = 'flex-1 py-3 bg-gradient-to-r from-red-500 to-rose-600 hover:opacity-90 rounded-xl font-bold transition-all';
+                confirmBtn.textContent = 'Confirm Sell';
+            }
+
+            updateTotalCost();
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+        }
+
+        // Close trade modal
+        function closeTradeModal() {
+            const modal = document.getElementById('trade-modal');
+            const modalContent = document.getElementById('trade-modal-content');
+
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        // Update total cost in modal
+        function updateTotalCost() {
+            const shares = parseInt(document.getElementById('shares-input').value) || 0;
+            const total = shares * currentStock.price;
+            document.getElementById('total-cost').textContent = '$' + total.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        // Execute trade
+        async function executeTrade() {
+            const shares = parseInt(document.getElementById('shares-input').value);
+            if (!shares || shares <= 0) {
+                showToast('Please enter a valid number of shares', 'error');
+                return;
+            }
+
+            const totalCost = shares * currentStock.price;
+
+            if (currentTradeType === 'buy') {
+                if (totalCost > cashBalance) {
+                    showToast('Insufficient funds for this trade', 'error');
+                    return;
+                }
+
+                // Execute buy
+                showLoading('Processing buy order...');
+                cashBalance -= totalCost;
+
+                const result = await window.dataSdk.create({
+                    symbol: currentStock.symbol,
+                    name: currentStock.name,
+                    shares: shares,
+                    purchase_price: currentStock.price,
+                    last_price: currentStock.price,
+                    transaction_type: 'buy',
+                    added_at: new Date().toISOString(),
+                    recommendation: currentStock.recommendation.recommendation
+                });
+
+                hideLoading();
+
+                if (result.isOk) {
+                    closeTradeModal();
+                    showToast(`Bought ${shares} shares of ${currentStock.symbol} for $${totalCost.toFixed(2)}`, 'success');
+                    updateBalanceDisplay();
+                } else {
+                    cashBalance += totalCost; // Rollback
+                    showToast('Trade failed. Please try again.', 'error');
+                }
+            } else {
+                // Execute sell
+                const holding = portfolio.find(p => p.symbol === currentStock.symbol);
+                if (!holding || holding.shares < shares) {
+                    showToast(`You don't own enough shares to sell`, 'error');
+                    return;
+                }
+
+                showLoading('Processing sell order...');
+                const saleProceeds = shares * currentStock.price;
+                cashBalance += saleProceeds;
+
+                if (holding.shares === shares) {
+                    // Sell all shares - delete the position
+                    const result = await window.dataSdk.delete(holding);
+                    hideLoading();
+
+                    if (result.isOk) {
+                        closeTradeModal();
+                        showToast(`Sold ${shares} shares of ${currentStock.symbol} for $${saleProceeds.toFixed(2)}`, 'success');
+                        updateBalanceDisplay();
+                    } else {
+                        cashBalance -= saleProceeds; // Rollback
+                        showToast('Trade failed. Please try again.', 'error');
+                    }
+                } else {
+                    // Partial sell - update the position
+                    holding.shares -= shares;
+                    const result = await window.dataSdk.update(holding);
+                    hideLoading();
+
+                    if (result.isOk) {
+                        closeTradeModal();
+                        showToast(`Sold ${shares} shares of ${currentStock.symbol} for $${saleProceeds.toFixed(2)}`, 'success');
+                        updateBalanceDisplay();
+                    } else {
+                        holding.shares += shares; // Rollback
+                        cashBalance -= saleProceeds;
+                        showToast('Trade failed. Please try again.', 'error');
+                    }
+                }
+            }
+        }
+
+        // Update balance displays
+        function updateBalanceDisplay() {
+            document.getElementById('cash-balance').textContent = '$' + cashBalance.toLocaleString('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            });
+
+            // Calculate portfolio value
+            let portfolioValue = cashBalance;
+            portfolio.forEach(holding => {
+                const stock = stockDatabase[holding.symbol];
+                if (stock) {
+                    portfolioValue += holding.shares * stock.basePrice;
+                }
+            });
+
+            document.getElementById('portfolio-value').textContent = '$' + portfolioValue.toLocaleString('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            });
+        }
+
+        // Update profile statistics
+        function updateProfileStats() {
+            // Update cash balance in profile
+            document.getElementById('profile-cash-balance').textContent = '$' + cashBalance.toLocaleString('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            });
+
+            // Count unique stocks owned
+            const uniqueStocksOwned = portfolio.length;
+            const totalShares = portfolio.reduce((sum, p) => sum + p.shares, 0);
+
+            // Count watchlist (excluding owned stocks)
+            const watchlistOnly = watchlist.filter(w => !w.transaction_type || w.transaction_type !== 'buy');
+
+            // Calculate total invested
+            let totalInvested = 0;
+            let currentValue = 0;
+
+            portfolio.forEach(holding => {
+                const invested = holding.shares * holding.purchase_price;
+                totalInvested += invested;
+
+                const stock = stockDatabase[holding.symbol];
+                if (stock) {
+                    currentValue += holding.shares * stock.basePrice;
+                }
+            });
+
+            const gainLoss = currentValue - totalInvested;
+            const gainPercent = totalInvested > 0 ? (gainLoss / totalInvested * 100) : 0;
+            const isGain = gainLoss >= 0;
+
+            // Update UI
+            document.getElementById('profile-stocks-owned').textContent = uniqueStocksOwned;
+            document.getElementById('profile-total-shares').textContent = totalShares.toLocaleString() + ' share' + (totalShares !== 1 ? 's' : '');
+
+            document.getElementById('profile-watchlist-count').textContent = watchlistOnly.length;
+
+            document.getElementById('profile-invested').textContent = '$' + totalInvested.toLocaleString('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            });
+
+            const gainLossEl = document.getElementById('profile-gain-loss');
+            const gainPercentEl = document.getElementById('profile-gain-percent');
+            const gainIconEl = document.getElementById('profile-gain-icon');
+
+            gainLossEl.textContent = (isGain ? '+' : '') + '$' + Math.abs(gainLoss).toLocaleString('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            });
+            gainLossEl.className = `text-2xl font-bold ${isGain ? 'text-green-400' : 'text-red-400'}`;
+
+            gainPercentEl.textContent = (isGain ? '+' : '') + gainPercent.toFixed(2) + '%';
+            gainPercentEl.className = `text-xs mt-1 ${isGain ? 'text-green-500' : 'text-red-500'}`;
+
+            gainIconEl.className = `w-12 h-12 rounded-full ${isGain ? 'bg-green-500/20' : 'bg-red-500/20'} flex items-center justify-center mx-auto mb-3`;
+            gainIconEl.innerHTML = isGain ?
+                '<svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>' :
+                '<svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>';
+
+            // Update holdings breakdown
+            const holdingsBreakdown = document.getElementById('holdings-breakdown');
+            const holdingsList = document.getElementById('holdings-list');
+
+            if (portfolio.length > 0) {
+                holdingsBreakdown.classList.remove('hidden');
+
+                holdingsList.innerHTML = portfolio.map(holding => {
+                    const stock = stockDatabase[holding.symbol];
+                    const currentPrice = stock ? stock.basePrice : holding.last_price;
+                    const invested = holding.shares * holding.purchase_price;
+                    const currentVal = holding.shares * currentPrice;
+                    const profit = currentVal - invested;
+                    const profitPercent = (profit / invested * 100);
+                    const isProfit = profit >= 0;
+
+                    return `
+            <div class="liquid-glass-dark rounded-lg p-3 flex items-center justify-between cursor-pointer hover:bg-white/10 transition-all" data-symbol="${holding.symbol}">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                  <span class="font-bold text-sm">${holding.symbol.substring(0, 2)}</span>
+                </div>
+                <div>
+                  <p class="font-semibold text-sm">${holding.symbol}</p>
+                  <p class="text-xs text-gray-500">${holding.shares} shares @ $${holding.purchase_price.toFixed(2)}</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <p class="font-semibold text-sm">$${currentVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p class="text-xs ${isProfit ? 'text-green-400' : 'text-red-400'}">
+                  ${isProfit ? '+' : ''}${profit.toFixed(2)} (${isProfit ? '+' : ''}${profitPercent.toFixed(1)}%)
+                </p>
+              </div>
+            </div>
+          `;
+                }).join('');
+
+                // Add click handlers to holdings
+                holdingsList.querySelectorAll('[data-symbol]').forEach(el => {
+                    el.addEventListener('click', () => {
+                        const symbol = el.dataset.symbol;
+                        document.getElementById('stock-input').value = symbol;
+                        analyzeStock(symbol);
+                        window.scrollTo({
+                            top: 0,
+                            behavior: 'smooth'
+                        });
+                    });
+                });
+            } else {
+                holdingsBreakdown.classList.add('hidden');
+            }
+        }
+
+        // Config change handler
+        async function onConfigChange(config) {
+            const appTitle = document.getElementById('app-title');
+            const greeting = document.getElementById('greeting');
+            const userName = document.getElementById('user-name');
+
+            appTitle.textContent = config.app_title || defaultConfig.app_title;
+            greeting.textContent = config.welcome_text || defaultConfig.welcome_text;
+            userName.textContent = config.user_name || defaultConfig.user_name;
+
+            // Update starting balance if changed
+            if (config.starting_balance) {
+                cashBalance = parseFloat(config.starting_balance) || defaultConfig.starting_balance;
+                updateBalanceDisplay();
+                updateProfileStats();
+                updateTaskbarDisplay();
+            }
+
+            // Apply font
+            const fontFamily = config.font_family || defaultConfig.font_family;
+            document.body.style.fontFamily = `${fontFamily}, sans-serif`;
+        }
+
+        // Map to capabilities
+        function mapToCapabilities(config) {
+            return {
+                recolorables: [{
+                    get: () => config.primary_color || defaultConfig.primary_color,
+                    set: (value) => {
+                        config.primary_color = value;
+                        window.elementSdk.setConfig({
+                            primary_color: value
+                        });
+                    }
+                }, {
+                    get: () => config.surface_color || defaultConfig.surface_color,
+                    set: (value) => {
+                        config.surface_color = value;
+                        window.elementSdk.setConfig({
+                            surface_color: value
+                        });
+                    }
+                }, {
+                    get: () => config.text_color || defaultConfig.text_color,
+                    set: (value) => {
+                        config.text_color = value;
+                        window.elementSdk.setConfig({
+                            text_color: value
+                        });
+                    }
+                }, {
+                    get: () => config.accent_color || defaultConfig.accent_color,
+                    set: (value) => {
+                        config.accent_color = value;
+                        window.elementSdk.setConfig({
+                            accent_color: value
+                        });
+                    }
+                }, {
+                    get: () => config.secondary_color || defaultConfig.secondary_color,
+                    set: (value) => {
+                        config.secondary_color = value;
+                        window.elementSdk.setConfig({
+                            secondary_color: value
+                        });
+                    }
+                }],
+                borderables: [],
+                fontEditable: {
+                    get: () => config.font_family || defaultConfig.font_family,
+                    set: (value) => {
+                        config.font_family = value;
+                        window.elementSdk.setConfig({
+                            font_family: value
+                        });
+                    }
+                },
+                fontSizeable: {
+                    get: () => config.font_size || defaultConfig.font_size,
+                    set: (value) => {
+                        config.font_size = value;
+                        window.elementSdk.setConfig({
+                            font_size: value
+                        });
+                    }
+                }
+            };
+        }
+
+        // Map to edit panel values
+        function mapToEditPanelValues(config) {
+            return new Map([
+                ['app_title', config.app_title || defaultConfig.app_title],
+                ['welcome_text', config.welcome_text || defaultConfig.welcome_text],
+                ['user_name', config.user_name || defaultConfig.user_name],
+                ['starting_balance', config.starting_balance || defaultConfig.starting_balance]
+            ]);
+        }
+
+        // Initialize
+        async function init() {
+            // Handle login
+            const loginForm = document.getElementById('login-form');
+            const loginScreen = document.getElementById('login-screen');
+
+            loginForm.addEventListener('submit', async(e) => {
+                e.preventDefault();
+
+                const username = document.getElementById('login-username').value;
+                const password = document.getElementById('login-password').value;
+
+                if (username && password) {
+                    showLoading('Signing in...');
+
+                    // Simulate authentication delay
+                    await new Promise(r => setTimeout(r, 1500));
+
+                    isLoggedIn = true;
+                    currentUser = username;
+
+                    // Update user name in header
+                    document.getElementById('user-name').textContent = username;
+
+                    // Hide login screen with animation
+                    loginScreen.style.opacity = '0';
+                    loginScreen.style.transform = 'scale(0.95)';
+
+                    setTimeout(() => {
+                        loginScreen.classList.add('hidden');
+                    }, 500);
+
+                    hideLoading();
+                    showToast('Welcome back, ' + username + '!', 'success');
+                }
+            });
+
+            // Custom cursor tracking
+            const cursor = document.getElementById('custom-cursor');
+            const trail = document.getElementById('cursor-trail');
+            let mouseX = 0,
+                mouseY = 0;
+            let trailX = 0,
+                trailY = 0;
+
+            document.addEventListener('mousemove', (e) => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+                cursor.style.left = mouseX + 'px';
+                cursor.style.top = mouseY + 'px';
+            });
+
+            // Smooth trail following
+            function animateTrail() {
+                const dx = mouseX - trailX;
+                const dy = mouseY - trailY;
+                trailX += dx * 0.15;
+                trailY += dy * 0.15;
+                trail.style.left = trailX + 'px';
+                trail.style.top = trailY + 'px';
+                requestAnimationFrame(animateTrail);
+            }
+            animateTrail();
+
+            // Hover effect on interactive elements
+            const interactiveElements = 'button, input, a, .suggestion-item, .stock-card, .delete-btn, .time-btn';
+            document.addEventListener('mouseover', (e) => {
+                if (e.target.closest(interactiveElements)) {
+                    document.body.classList.add('cursor-hover');
+                }
+            });
+            document.addEventListener('mouseout', (e) => {
+                if (e.target.closest(interactiveElements)) {
+                    document.body.classList.remove('cursor-hover');
+                }
+            });
+
+            // Initialize Element SDK
+            if (window.elementSdk) {
+                window.elementSdk.init({
+                    defaultConfig,
+                    onConfigChange,
+                    mapToCapabilities,
+                    mapToEditPanelValues
+                });
+            }
+
+            // Initialize Data SDK
+            if (window.dataSdk) {
+                const result = await window.dataSdk.init(dataHandler);
+                if (!result.isOk) {
+                    console.error('Failed to initialize data SDK');
+                }
+            }
+
+            // Event listeners
+            const stockInput = document.getElementById('stock-input');
+            const analyzeBtn = document.getElementById('analyze-btn');
+            const saveBtn = document.getElementById('save-btn');
+            const suggestionsEl = document.getElementById('suggestions');
+            const buyBtn = document.getElementById('buy-btn');
+            const sellBtn = document.getElementById('sell-btn');
+
+
+            // Profile toggle (guarded - elements may be absent)
+            const taskbarToggle = document.getElementById('taskbar-toggle');
+            const taskbarClose = document.getElementById('taskbar-close');
+            const taskbarCollapsed = document.getElementById('taskbar-collapsed');
+            const taskbarExpanded = document.getElementById('taskbar-expanded');
+            const taskbarChevron = document.getElementById('taskbar-chevron');
+
+            function openTaskbar() {
+                if (taskbarCollapsed && taskbarExpanded && taskbarChevron) {
+                    taskbarCollapsed.classList.add('hidden');
+                    taskbarExpanded.classList.remove('hidden');
+                    taskbarChevron.classList.remove('rotate-180');
+                }
+            }
+
+            function closeTaskbar() {
+                if (taskbarCollapsed && taskbarExpanded && taskbarChevron) {
+                    taskbarExpanded.classList.add('hidden');
+                    taskbarCollapsed.classList.remove('hidden');
+                    taskbarChevron.classList.add('rotate-180');
+                }
+            }
+
+            if (taskbarToggle) taskbarToggle.addEventListener('click', openTaskbar);
+            if (taskbarClose) taskbarClose.addEventListener('click', closeTaskbar);
+
+            // Update taskbar display
+            function updateTaskbarDisplay() {
+                const userName = window.elementSdk?.config?.user_name || defaultConfig.user_name;
+                const taskbarUserNameEl = document.getElementById('taskbar-user-name');
+                const taskbarExpandedUserEl = document.getElementById('taskbar-expanded-user');
+                const taskbarCashEl = document.getElementById('taskbar-cash');
+                const taskbarHoldingsEl = document.getElementById('taskbar-holdings');
+
+                if (taskbarUserNameEl) taskbarUserNameEl.textContent = userName;
+                if (taskbarExpandedUserEl) taskbarExpandedUserEl.textContent = userName;
+                if (taskbarCashEl) taskbarCashEl.textContent = '$' + cashBalance.toLocaleString('en-US', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                });
+                if (taskbarHoldingsEl) taskbarHoldingsEl.textContent = portfolio.length;
+
+                let totalInvested = 0;
+                let currentValue = 0;
+                portfolio.forEach(holding => {
+                    totalInvested += holding.shares * holding.purchase_price;
+                    const stock = stockDatabase[holding.symbol];
+                    if (stock) {
+                        currentValue += holding.shares * stock.basePrice;
+                    }
+                });
+
+                const gainLoss = currentValue - totalInvested;
+                const isGain = gainLoss >= 0;
+                const plEl = document.getElementById('taskbar-pl');
+                if (plEl) {
+                    plEl.textContent = (isGain ? '+' : '') + '$' + Math.abs(gainLoss).toLocaleString('en-US', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                    });
+                    plEl.className = `text-sm font-bold ${isGain ? 'text-green-400' : 'text-red-400'}`;
+                }
+
+                // Update holdings count
+                const holdingsCount = document.getElementById('holdings-count');
+                if (holdingsCount) {
+                    holdingsCount.textContent = portfolio.length + ' position' + (portfolio.length !== 1 ? 's' : '');
+                }
+            }
+
+            const profileToggle = document.getElementById('profile-toggle');
+            const profileContent = document.getElementById('profile-content');
+            const profileChevron = document.getElementById('profile-chevron');
+            const holdingsBreakdown = document.getElementById('holdings-breakdown');
+
+            // Profile no longer has toggle - it's in the taskbar now
+
+            // Featured stocks click handler
+            document.getElementById('featured-stocks').addEventListener('click', (e) => {
+                const card = e.target.closest('.featured-stock-card');
+                if (card) {
+                    const symbol = card.dataset.symbol;
+                    stockInput.value = symbol;
+                    analyzeStock(symbol);
+                    // Scroll to analysis
+                    document.getElementById('analysis-panel').scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest'
+                    });
+                }
+            });
+
+            // Trade modal events
+            document.getElementById('close-trade-modal').addEventListener('click', closeTradeModal);
+            document.getElementById('cancel-trade-btn').addEventListener('click', closeTradeModal);
+            document.getElementById('confirm-trade-btn').addEventListener('click', executeTrade);
+            document.getElementById('shares-input').addEventListener('input', updateTotalCost);
+
+            // Close modal on background click
+            document.getElementById('trade-modal').addEventListener('click', (e) => {
+                if (e.target.id === 'trade-modal') {
+                    closeTradeModal();
+                }
+            });
+
+            // Buy/Sell buttons
+            buyBtn.addEventListener('click', () => openTradeModal('buy'));
+            sellBtn.addEventListener('click', () => openTradeModal('sell'));
+
+            stockInput.addEventListener('input', (e) => {
+                showSuggestions(e.target.value);
+            });
+
+            stockInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    suggestionsEl.classList.add('hidden');
+                    analyzeStock(stockInput.value);
+                }
+            });
+
+            suggestionsEl.addEventListener('click', (e) => {
+                const item = e.target.closest('.suggestion-item');
+                if (item) {
+                    const symbol = item.dataset.symbol;
+                    stockInput.value = symbol;
+                    suggestionsEl.classList.add('hidden');
+                    analyzeStock(symbol);
+                }
+            });
+
+            analyzeBtn.addEventListener('click', () => {
+                suggestionsEl.classList.add('hidden');
+                analyzeStock(stockInput.value);
+            });
+
+            saveBtn.addEventListener('click', toggleWatchlist);
+
+            // Delete from watchlist
+            document.getElementById('watchlist-container').addEventListener('click', async(e) => {
+                const deleteBtn = e.target.closest('.delete-btn');
+                if (deleteBtn && !isLoading) {
+                    e.stopPropagation();
+                    const id = deleteBtn.dataset.id;
+                    const stock = watchlist.find(s => s.__backendId === id);
+                    if (stock) {
+                        showLoading('Removing...');
+                        const result = await window.dataSdk.delete(stock);
+                        hideLoading();
+                        if (result.isOk) {
+                            showToast(stock.symbol + ' removed', 'success');
+                        } else {
+                            showToast('Failed to remove', 'error');
+                        }
+                    }
+                }
+            });
+
+            // Time range buttons
+            document.querySelectorAll('.time-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.time-btn').forEach(b => {
+                        b.classList.remove('bg-indigo-500/20', 'text-indigo-400');
+                        b.classList.add('bg-white/5', 'text-gray-400');
+                    });
+                    btn.classList.add('bg-indigo-500/20', 'text-indigo-400');
+                    btn.classList.remove('bg-white/5', 'text-gray-400');
+
+                    // Regenerate chart with different time range
+                    if (currentStock) {
+                        const days = {
+                            '1W': 7,
+                            '1M': 30,
+                            '3M': 90,
+                            '1Y': 252,
+                            '5Y': 1260
+                        }[btn.dataset.range] || 30;
+                        const stock = stockDatabase[currentStock.symbol];
+                        if (stock) {
+                            const newData = generateHistoricalData(stock.basePrice, days);
+                            renderChart(newData);
+                        }
+                    }
+                });
+            });
+
+            // Close suggestions when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('#stock-input') && !e.target.closest('#suggestions')) {
+                    suggestionsEl.classList.add('hidden');
+                }
+            });
+
+            // Initial render
+            renderFeaturedStocks();
+            renderWatchlist();
+            updateProfileStats();
+        }
+
+        init();
+    </script>
+    <script>
+        (function() {
+            function c() {
+                var b = a.contentDocument || a.contentWindow.document;
+                if (b) {
+                    var d = b.createElement('script');
+                    d.innerHTML = "window.__CF$cv$params={r:'9bd43eaf81f98602',t:'MTc2ODMwMDUwNi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+                    b.getElementsByTagName('head')[0].appendChild(d)
+                }
+            }
+            if (document.body) {
+                var a = document.createElement('iframe');
+                a.height = 1;
+                a.width = 1;
+                a.style.position = 'absolute';
+                a.style.top = 0;
+                a.style.left = 0;
+                a.style.border = 'none';
+                a.style.visibility = 'hidden';
+                document.body.appendChild(a);
+                if ('loading' !== document.readyState) c();
+                else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c);
+                else {
+                    var e = document.onreadystatechange || function() {};
+                    document.onreadystatechange = function(b) {
+                        e(b);
+                        'loading' !== document.readyState && (document.onreadystatechange = e, c())
+                    }
+                }
+            }
+        })();
+    </script>
+</body>
+
+</html>
